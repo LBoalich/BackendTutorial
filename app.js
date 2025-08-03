@@ -1,16 +1,39 @@
 // setup.. this is similar to when we use our default tags in html
-const express = require("express")
-// we have to use cors in order to host a front end and backend on the same device
-var cors = require("cors")
-// activate or tell the app variable to be an express server
-
-const bodyParser = require("body-parser")
+const express = require("express");
 const Song = require("./models/songs");
-const app = express()
-app.use(cors())
+// we have to use cors in order to host a front end and backend on the same device
+var cors = require("cors");
+//const bodyParser = require("body-parser");
+const jwt = require('jwt-simple');
+const User = require("./models/users");
+// activate or tell the app variable to be an express server
+const app = express();
+app.use(cors());
 
-app.use(bodyParser.json());
-const router = express.Router()
+//Middleware that parses HTTP requests with JSON body
+app.use(express.json());
+const router = express.Router();
+const secret = "supersecret";
+
+//creating a new user
+router.post("/user", async (req, res) => {
+    if (!req.body.username || !req.body.password) {
+        res.status(400).json({error: "Missing username or password"});
+    }
+
+    const newUser = await new User({
+        username: req.body.username,
+        password: req.body.password,
+        status: req.body.status
+    });
+
+    try{
+        await newUser.save();
+        res.sendStatus(201); //created
+    } catch (err) {
+        res.status(400).send(err);
+    }
+})
 
 // making an api using routes
 // Routes are used to handle browser requests.  The look like URLs.  The difference is that when a browser requests a route, it is dynamically handled by using a function
@@ -70,12 +93,22 @@ router.put("/songs/:id", async (req, res) => {
     try {
         const song = req.body;
         await Song.updateOne({_id : req.params.id }, song);
-        console.log(song);
         res.sendStatus(204);
     } catch (err) {
         res.status(400).send(err);
     }
 });
+
+router.delete("/songs/:id", async(req, res) => {
+    //method or function in mongoose/mongo to delete a single instance of a song or object
+    try {
+        const song = await Song.findById(req.params.id);
+        await Song.deleteOne({_id: song._id});
+        res.sendStatus(204);
+    } catch (err) {
+        res.status(400).send(err);
+    }
+})
 
 // all requests that usually use an api start with /api.. so the url would be localhouse:3000/api/songs
 app.use("/api", router)
